@@ -281,6 +281,14 @@ export class InventoryService {
       throw new AppError(404, 'Regla de stock no encontrada');
     }
 
+    // Validate that at least one minimum is set after the update
+    const newMinBoxes = data.minBoxes !== undefined ? data.minBoxes : rule.minBoxes;
+    const newMinPieces = data.minPieces !== undefined ? data.minPieces : rule.minPieces;
+    
+    if (newMinBoxes === 0 && newMinPieces === 0) {
+      throw new AppError(400, 'Debe establecer un mínimo de cajas o piezas');
+    }
+
     const updated = await prisma.stockRule.update({
       where: { id: rule.id },
       data
