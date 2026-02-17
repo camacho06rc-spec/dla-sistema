@@ -331,9 +331,10 @@ export class InventoryService {
   }
 
   private async checkStockRules(productId: string, branchId: string) {
-    const rule = await prisma.stockRule.findUnique({
+    const rule = await prisma.stockRule.findFirst({
       where: { 
-        productId_branchId: { productId, branchId },
+        productId,
+        branchId,
         isActive: true
       }
     });
@@ -373,26 +374,45 @@ export class InventoryService {
   }
 
   private async filterLowStock(inventoryData: any[]) {
-    const filtered = [];
-    
-    for (const inv of inventoryData) {
-      const rule = await prisma.stockRule.findUnique({
-        where: {
-          productId_branchId: {
-            productId: inv.productId,
-            branchId: inv.branchId
-          },
-          isActive: true
-        }
-      });
+    if (inventoryData.length === 0) return [];
 
-      if (rule) {
-        const isBelowMin = inv.stockBoxes < rule.minBoxes || inv.stockPieces < rule.minPieces;
-        if (isBelowMin) {
-          filtered.push(inv);
-        }
+    // Fetch all relevant stock rules in a single query
+    const productBranchPairs = inventoryData.map(inv => ({
+      productId: inv.productId,
+      branchId: inv.branchId
+    }));
+
+    const stockRules = await prisma.stockRule.findMany({
+      where: {
+        AND: [
+          {
+            OR: productBranchPairs.map(pair => ({
+              AND: [
+                { productId: pair.productId },
+                { branchId: pair.branchId }
+              ]
+            }))
+          },
+          { isActive: true }
+        ]
       }
-    }
+    });
+
+    // Create a map for quick lookups
+    const ruleMap = new Map(
+      stockRules.map(rule => [`${rule.productId}_${rule.branchId}`, rule])
+    );
+
+    // Filter inventory items with low stock
+    const filtered = inventoryData.filter(inv => {
+      const key = `${inv.productId}_${inv.branchId}`;
+      const rule = ruleMap.get(key);
+      
+      if (rule) {
+        return inv.stockBoxes < rule.minBoxes || inv.stockPieces < rule.minPieces;
+      }
+      return false;
+    });
 
     return filtered;
   }

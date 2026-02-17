@@ -6,8 +6,8 @@ const router = Router();
 
 // Consultas (requieren autenticación)
 router.get('/', authenticate, controller.getInventory);
-router.get('/:productId/:branchId', authenticate, controller.getInventoryByProductAndBranch);
 router.get('/:productId/:branchId/movements', authenticate, controller.getMovements);
+router.get('/:productId/:branchId', authenticate, controller.getInventoryByProductAndBranch);
 
 // Ajustes (requieren autenticación)
 router.post('/adjust', authenticate, controller.adjustInventory);
