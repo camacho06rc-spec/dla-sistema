@@ -327,8 +327,7 @@ export class ProductsService {
   async updateImageOrder(
     productId: string,
     imageId: string,
-    data: UpdateImageOrderDTO,
-    userId: string
+    data: UpdateImageOrderDTO
   ) {
     await this.findById(productId);
 

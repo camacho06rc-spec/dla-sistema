@@ -1,49 +1,58 @@
 import { z } from 'zod';
 
-export const createProductSchema = z
-  .object({
-    name: z.string().min(2).max(200),
-    sku: z.string().optional(),
-    description: z.string().optional(),
-    categoryId: z.string().uuid(),
-    brandId: z.string().uuid(),
-    mainImageUrl: z.string().url().optional(),
+export const createProductSchema = z.object({
+  name: z.string().min(2).max(200),
+  sku: z.string().optional(),
+  description: z.string().optional(),
+  categoryId: z.string().uuid(),
+  brandId: z.string().uuid(),
+  mainImageUrl: z.string().url().optional(),
 
-    // Retornables
-    isReturnable: z.boolean().default(false),
-    containersPerBox: z.number().int().positive().optional(),
-    depositPerContainer: z.number().positive().optional(),
+  // Retornables
+  isReturnable: z.boolean().default(false),
+  containersPerBox: z.number().int().positive().optional(),
+  depositPerContainer: z.number().positive().optional(),
 
-    // Unidades
-    piecesPerBox: z.number().int().positive().default(1),
+  // Unidades
+  piecesPerBox: z.number().int().positive().default(1),
 
-    // Puntos
-    grantsPoints: z.boolean().default(true),
+  // Puntos
+  grantsPoints: z.boolean().default(true),
 
-    // Precios (IVA incluido)
-    prices: z.object({
-      priceEventual: z.number().positive(),
-      priceFrecuente: z.number().positive(),
-      priceVip: z.number().positive(),
-    }),
-  })
-  .refine(
-    (data) => {
-      // Si es retornable, debe tener containersPerBox y depositPerContainer
-      if (data.isReturnable) {
-        return data.containersPerBox && data.depositPerContainer;
-      }
-      return true;
-    },
-    {
-      message:
-        'Los productos retornables deben tener envases por caja y depósito',
+  // Precios (IVA incluido)
+  prices: z.object({
+    priceEventual: z.number().positive(),
+    priceFrecuente: z.number().positive(),
+    priceVip: z.number().positive(),
+  }),
+});
+
+// Validation for returnable products
+export const validateCreateProduct = (data: any) => {
+  const parsed = createProductSchema.parse(data);
+  if (parsed.isReturnable) {
+    if (!parsed.containersPerBox || !parsed.depositPerContainer) {
+      throw new Error('Los productos retornables deben tener envases por caja y depósito');
     }
-  );
+  }
+  return parsed;
+};
 
-export const updateProductSchema = createProductSchema
-  .partial()
-  .omit({ prices: true });
+const baseProductSchema = z.object({
+  name: z.string().min(2).max(200),
+  sku: z.string().optional(),
+  description: z.string().optional(),
+  categoryId: z.string().uuid(),
+  brandId: z.string().uuid(),
+  mainImageUrl: z.string().url().optional(),
+  isReturnable: z.boolean().default(false),
+  containersPerBox: z.number().int().positive().optional(),
+  depositPerContainer: z.number().positive().optional(),
+  piecesPerBox: z.number().int().positive().default(1),
+  grantsPoints: z.boolean().default(true),
+});
+
+export const updateProductSchema = baseProductSchema.partial();
 
 export const updateProductPricesSchema = z.object({
   priceEventual: z.number().positive(),

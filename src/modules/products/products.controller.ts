@@ -3,7 +3,7 @@ import { AuthRequest } from '../../middlewares/authenticate';
 import { ProductsService } from './products.service';
 import { successResponse } from '../../utils/responses';
 import {
-  createProductSchema,
+  validateCreateProduct,
   updateProductSchema,
   updateProductPricesSchema,
   getProductsQuerySchema,
@@ -36,7 +36,7 @@ export class ProductsController {
 
   async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const data = createProductSchema.parse(req.body);
+      const data = validateCreateProduct(req.body);
       const product = await productsService.create(data, req.user!.id);
       return successResponse(
         res,
@@ -158,8 +158,7 @@ export class ProductsController {
       const image = await productsService.updateImageOrder(
         id,
         imageId,
-        data,
-        req.user!.id
+        data
       );
       return successResponse(
         res,
