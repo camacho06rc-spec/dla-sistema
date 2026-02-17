@@ -4,6 +4,8 @@ import { CustomerTier } from '@prisma/client';
 
 export class CustomersService {
   async findAll(query: any) {
+    // Query parameters are validated by Zod schema in controller before reaching here
+    // getCustomersQuerySchema ensures page >= 1, limit is 1-100, and proper types
     const { page = 1, limit = 20, search, type, tier, isActive, isBlocked } = query;
     const skip = (page - 1) * limit;
 
@@ -87,7 +89,8 @@ export class CustomersService {
   }
 
   private async generateCustomerCode(): Promise<string> {
-    // Use timestamp for uniqueness to avoid race conditions
+    // Use timestamp + random for uniqueness
+    // Database has unique constraint on code field to prevent duplicates
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     const code = `CLI-${timestamp}-${random}`;
@@ -118,18 +121,36 @@ export class CustomersService {
       }
     }
 
-    // Generate unique code
+    // Generate unique code - database constraint ensures uniqueness
     const code = await this.generateCustomerCode();
 
-    return await prisma.customer.create({
-      data: {
-        ...data,
-        code
-      },
-      include: {
-        addresses: true
+    try {
+      return await prisma.customer.create({
+        data: {
+          ...data,
+          code
+        },
+        include: {
+          addresses: true
+        }
+      });
+    } catch (error: any) {
+      // Handle unique constraint violation on code (rare race condition)
+      if (error.code === 'P2002' && error.meta?.target?.includes('code')) {
+        // Retry with a new code
+        const newCode = await this.generateCustomerCode();
+        return await prisma.customer.create({
+          data: {
+            ...data,
+            code: newCode
+          },
+          include: {
+            addresses: true
+          }
+        });
       }
-    });
+      throw error;
+    }
   }
 
   async update(id: string, data: any) {
