@@ -38,10 +38,6 @@ export const createAddressSchema = z.object({
 
 export const updateAddressSchema = createAddressSchema.omit({ customerId: true }).partial();
 
-export const toggleBlockSchema = z.object({
-  reason: z.string().optional()
-});
-
 export const changeTierSchema = z.object({
   tier: z.nativeEnum(CustomerTier)
 });

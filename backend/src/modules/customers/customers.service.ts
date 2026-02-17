@@ -87,18 +87,10 @@ export class CustomersService {
   }
 
   private async generateCustomerCode(): Promise<string> {
-    const count = await prisma.customer.count();
-    const code = `CLI-${String(count + 1).padStart(6, '0')}`;
-    
-    // Verify uniqueness
-    const existing = await prisma.customer.findUnique({
-      where: { code }
-    });
-    
-    if (existing) {
-      // If collision, use timestamp suffix
-      return `CLI-${String(count + 1).padStart(6, '0')}-${Date.now()}`;
-    }
+    // Use timestamp for uniqueness to avoid race conditions
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const code = `CLI-${timestamp}-${random}`;
     
     return code;
   }
@@ -272,17 +264,21 @@ export class CustomersService {
       throw new AppError(404, 'Dirección no encontrada');
     }
 
-    // No permitir eliminar la única dirección default
+    // Si es la dirección default y hay otras direcciones, promover otra a default
     if (address.isDefault) {
-      const otherAddresses = await prisma.address.count({
+      const otherAddress = await prisma.address.findFirst({
         where: { 
           customerId: address.customerId,
           id: { not: id }
         }
       });
 
-      if (otherAddresses > 0) {
-        throw new AppError(400, 'No puedes eliminar la dirección principal. Primero marca otra como principal.');
+      if (otherAddress) {
+        // Promover otra dirección a default antes de eliminar
+        await prisma.address.update({
+          where: { id: otherAddress.id },
+          data: { isDefault: true }
+        });
       }
     }
 
