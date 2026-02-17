@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { UsersService } from './users.service';
-import { successResponse, errorResponse } from '../../utils/response';
+import { successResponseLegacy, errorResponse } from '../../utils/response';
 import { AuthRequest } from '../../types';
 
 const usersService = new UsersService();
@@ -13,7 +13,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
     }
 
     const user = await usersService.getProfile(req.user.userId);
-    successResponse(res, user);
+    successResponseLegacy(res, user);
   } catch (error: any) {
     errorResponse(res, error.message, 404);
   }

@@ -7,6 +7,9 @@ import { errorMiddleware } from './middleware/error.middleware';
 import healthRoutes from './modules/health/health.routes';
 import authRoutes from './modules/auth/auth.routes';
 import usersRoutes from './modules/users/users.routes';
+import categoryRoutes from './modules/categories/categories.routes';
+import brandRoutes from './modules/brands/brands.routes';
+import productRoutes from './modules/products/products.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -34,6 +37,9 @@ export function createApp(): Application {
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
+  app.use('/api/categories', categoryRoutes);
+  app.use('/api/brands', brandRoutes);
+  app.use('/api/products', productRoutes);
 
   // Error handling
   app.use(errorMiddleware);
