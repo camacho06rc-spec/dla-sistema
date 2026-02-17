@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SELLER
+  CUSTOMER
+}
+
+enum CustomerTier {
+  EVENTUAL
+  FRECUENTE
+  VIP
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  UPDATE_PRICES
+  ADD_IMAGE
+  DELETE_IMAGE
+  LOGIN
+  LOGOUT
+}
+
+enum AuditEntity {
+  USER
+  CUSTOMER
+  CATEGORY
+  BRAND
+  PRODUCT
+  ORDER
+  PAYMENT
+}
+
+// ==================== USERS ====================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole @default(SELLER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs        AuditLog[]
+  priceHistory     ProductPriceHistory[]
+
+  @@map("users")
+}
+
+// ==================== CUSTOMERS ====================
+
+model Customer {
+  id            String       @id @default(uuid())
+  businessName  String
+  contactName   String
+  phone         String       @unique
+  email         String?
+  address       String?
+  tier          CustomerTier @default(EVENTUAL)
+  pointsBalance Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("customers")
+}
+
+// ==================== CATALOG ====================
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  imageUrl  String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  imageUrl  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id          String  @id @default(uuid())
+  name        String
+  slug        String  @unique
+  sku         String? @unique
+  description String?
+  categoryId  String
+  brandId     String
+
+  mainImageUrl String?
+
+  // Retornables
+  isReturnable         Boolean @default(false)
+  containersPerBox     Int?
+  depositPerContainer  Decimal? @db.Decimal(10, 2)
+
+  // Unidades
+  piecesPerBox Int @default(1)
+
+  // Puntos
+  grantsPoints Boolean @default(true)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category     Category              @relation(fields: [categoryId], references: [id])
+  brand        Brand                 @relation(fields: [brandId], references: [id])
+  prices       ProductPrice[]
+  priceHistory ProductPriceHistory[]
+  images       ProductImage[]
+
+  @@map("products")
+}
+
+model ProductPrice {
+  id             String  @id @default(uuid())
+  productId      String
+  priceEventual  Decimal @db.Decimal(10, 2)
+  priceFrecuente Decimal @db.Decimal(10, 2)
+  priceVip       Decimal @db.Decimal(10, 2)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_prices")
+}
+
+model ProductPriceHistory {
+  id             String   @id @default(uuid())
+  productId      String
+  priceEventual  Decimal  @db.Decimal(10, 2)
+  priceFrecuente Decimal  @db.Decimal(10, 2)
+  priceVip       Decimal  @db.Decimal(10, 2)
+  validFrom      DateTime
+  validTo        DateTime?
+  changedBy      String
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  changedByUser User @relation(fields: [changedBy], references: [id])
+
+  @@map("product_price_history")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  imageUrl  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+// ==================== AUDIT ====================
+
+model AuditLog {
+  id          String       @id @default(uuid())
+  userId      String
+  action      AuditAction
+  entity      AuditEntity
+  entityId    String
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

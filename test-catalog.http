@@ -1,0 +1,233 @@
+### Variables (update these after creating resources)
+@baseUrl = http://localhost:3001/api
+@token = YOUR_TOKEN_HERE
+@categoryId = CATEGORY_ID_HERE
+@brandId = BRAND_ID_HERE
+@productId = PRODUCT_ID_HERE
+@imageId = IMAGE_ID_HERE
+
+### ==============================================
+### HEALTH CHECK
+### ==============================================
+
+### Health Check
+GET {{baseUrl}}/health
+
+### ==============================================
+### CATEGORIES
+### ==============================================
+
+### Listar Categorías (sin filtros)
+GET {{baseUrl}}/categories
+
+### Listar Categorías (con paginación y búsqueda)
+GET {{baseUrl}}/categories?page=1&limit=10&search=bebidas
+
+### Listar Categorías (solo activas)
+GET {{baseUrl}}/categories?isActive=true
+
+### Obtener una Categoría
+GET {{baseUrl}}/categories/{{categoryId}}
+
+### Crear Categoría
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bebidas",
+  "imageUrl": "https://example.com/bebidas.jpg",
+  "order": 1
+}
+
+### Actualizar Categoría
+PUT {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bebidas y Refrescos",
+  "order": 2
+}
+
+### Toggle Categoría (activar/desactivar)
+PATCH {{baseUrl}}/categories/{{categoryId}}/toggle
+Authorization: Bearer {{token}}
+
+### Eliminar Categoría (soft delete)
+DELETE {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+
+### ==============================================
+### BRANDS
+### ==============================================
+
+### Listar Marcas (sin filtros)
+GET {{baseUrl}}/brands
+
+### Listar Marcas (con paginación y búsqueda)
+GET {{baseUrl}}/brands?page=1&limit=10&search=coca
+
+### Listar Marcas (solo activas)
+GET {{baseUrl}}/brands?isActive=true
+
+### Obtener una Marca
+GET {{baseUrl}}/brands/{{brandId}}
+
+### Crear Marca
+POST {{baseUrl}}/brands
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Coca Cola",
+  "imageUrl": "https://example.com/coca-cola-logo.jpg"
+}
+
+### Actualizar Marca
+PUT {{baseUrl}}/brands/{{brandId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Coca Cola Company",
+  "imageUrl": "https://example.com/coca-cola-new-logo.jpg"
+}
+
+### Toggle Marca (activar/desactivar)
+PATCH {{baseUrl}}/brands/{{brandId}}/toggle
+Authorization: Bearer {{token}}
+
+### Eliminar Marca (soft delete)
+DELETE {{baseUrl}}/brands/{{brandId}}
+Authorization: Bearer {{token}}
+
+### ==============================================
+### PRODUCTS
+### ==============================================
+
+### Listar Productos (sin filtros)
+GET {{baseUrl}}/products
+
+### Listar Productos (con paginación y búsqueda)
+GET {{baseUrl}}/products?page=1&limit=10&search=coca
+
+### Listar Productos (con filtros)
+GET {{baseUrl}}/products?categoryId={{categoryId}}&isReturnable=true
+
+### Listar Productos (por marca)
+GET {{baseUrl}}/products?brandId={{brandId}}
+
+### Obtener un Producto
+GET {{baseUrl}}/products/{{productId}}
+
+### Crear Producto (retornable)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Coca Cola 600ml",
+  "sku": "CC600",
+  "description": "Coca Cola botella retornable 600ml",
+  "categoryId": "{{categoryId}}",
+  "brandId": "{{brandId}}",
+  "mainImageUrl": "https://example.com/coca-600ml.jpg",
+  "isReturnable": true,
+  "containersPerBox": 24,
+  "depositPerContainer": 5,
+  "piecesPerBox": 24,
+  "grantsPoints": true,
+  "prices": {
+    "priceEventual": 550,
+    "priceFrecuente": 530,
+    "priceVip": 500
+  }
+}
+
+### Crear Producto (no retornable)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Sabritas Original 45g",
+  "sku": "SAB45",
+  "description": "Papas Sabritas sabor original",
+  "categoryId": "{{categoryId}}",
+  "brandId": "{{brandId}}",
+  "mainImageUrl": "https://example.com/sabritas-45g.jpg",
+  "isReturnable": false,
+  "piecesPerBox": 30,
+  "grantsPoints": true,
+  "prices": {
+    "priceEventual": 15,
+    "priceFrecuente": 14,
+    "priceVip": 13
+  }
+}
+
+### Actualizar Producto
+PUT {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Coca Cola 600ml Retornable",
+  "description": "Coca Cola botella retornable 600ml - Edición especial"
+}
+
+### Toggle Producto (activar/desactivar)
+PATCH {{baseUrl}}/products/{{productId}}/toggle
+Authorization: Bearer {{token}}
+
+### Eliminar Producto (soft delete)
+DELETE {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### ==============================================
+### PRODUCT PRICES
+### ==============================================
+
+### Actualizar Precios
+PUT {{baseUrl}}/products/{{productId}}/prices
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "priceEventual": 560,
+  "priceFrecuente": 540,
+  "priceVip": 510,
+  "reason": "Ajuste por inflación"
+}
+
+### Obtener Historial de Precios
+GET {{baseUrl}}/products/{{productId}}/price-history
+Authorization: Bearer {{token}}
+
+### ==============================================
+### PRODUCT IMAGES
+### ==============================================
+
+### Agregar Imagen a Galería
+POST {{baseUrl}}/products/{{productId}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "imageUrl": "https://example.com/coca-600ml-2.jpg",
+  "order": 1
+}
+
+### Actualizar Orden de Imagen
+PUT {{baseUrl}}/products/{{productId}}/images/{{imageId}}/order
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "order": 0
+}
+
+### Eliminar Imagen
+DELETE {{baseUrl}}/products/{{productId}}/images/{{imageId}}
+Authorization: Bearer {{token}}
