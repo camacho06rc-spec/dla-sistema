@@ -1,0 +1,317 @@
+import { prisma } from '../../config/database';
+import { AppError } from '../../middleware/error.middleware';
+import { CustomerTier } from '@prisma/client';
+
+export class CustomersService {
+  async findAll(query: any) {
+    const { page = 1, limit = 20, search, type, tier, isActive, isBlocked } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { businessName: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (type) where.type = type;
+    if (tier) where.tier = tier;
+    if (isActive !== undefined) where.isActive = isActive;
+    if (isBlocked !== undefined) where.isBlocked = isBlocked;
+
+    const [customers, total] = await Promise.all([
+      prisma.customer.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          addresses: {
+            orderBy: { isDefault: 'desc' }
+          },
+          _count: {
+            select: {
+              orders: true
+            }
+          }
+        },
+        orderBy: [
+          { lastName: 'asc' },
+          { firstName: 'asc' }
+        ]
+      }),
+      prisma.customer.count({ where })
+    ]);
+
+    return {
+      data: customers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async findById(id: string) {
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      include: {
+        addresses: {
+          orderBy: { isDefault: 'desc' }
+        },
+        orders: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            total: true,
+            createdAt: true
+          }
+        }
+      }
+    });
+
+    if (!customer) {
+      throw new AppError(404, 'Cliente no encontrado');
+    }
+
+    return customer;
+  }
+
+  private async generateCustomerCode(): Promise<string> {
+    const count = await prisma.customer.count();
+    const code = `CLI-${String(count + 1).padStart(6, '0')}`;
+    
+    // Verify uniqueness
+    const existing = await prisma.customer.findUnique({
+      where: { code }
+    });
+    
+    if (existing) {
+      // If collision, use timestamp suffix
+      return `CLI-${String(count + 1).padStart(6, '0')}-${Date.now()}`;
+    }
+    
+    return code;
+  }
+
+  async create(data: any) {
+    // Verificar si ya existe un cliente con el mismo teléfono (si se proporciona)
+    if (data.phone) {
+      const existing = await prisma.customer.findFirst({
+        where: { phone: data.phone }
+      });
+
+      if (existing) {
+        throw new AppError(409, 'Ya existe un cliente con ese número de teléfono');
+      }
+    }
+
+    // Verificar email único si se proporciona
+    if (data.email) {
+      const existingEmail = await prisma.customer.findFirst({
+        where: { email: data.email }
+      });
+
+      if (existingEmail) {
+        throw new AppError(409, 'Ya existe un cliente con ese email');
+      }
+    }
+
+    // Generate unique code
+    const code = await this.generateCustomerCode();
+
+    return await prisma.customer.create({
+      data: {
+        ...data,
+        code
+      },
+      include: {
+        addresses: true
+      }
+    });
+  }
+
+  async update(id: string, data: any) {
+    const customer = await this.findById(id);
+
+    // Verificar teléfono único si se está actualizando
+    if (data.phone && data.phone !== customer.phone) {
+      const existing = await prisma.customer.findFirst({
+        where: { phone: data.phone, id: { not: id } }
+      });
+
+      if (existing) {
+        throw new AppError(409, 'Ya existe un cliente con ese número de teléfono');
+      }
+    }
+
+    // Verificar email único si se está actualizando
+    if (data.email && data.email !== customer.email) {
+      const existing = await prisma.customer.findFirst({
+        where: { email: data.email, id: { not: id } }
+      });
+
+      if (existing) {
+        throw new AppError(409, 'Ya existe un cliente con ese email');
+      }
+    }
+
+    return await prisma.customer.update({
+      where: { id },
+      data,
+      include: {
+        addresses: true
+      }
+    });
+  }
+
+  async toggleActive(id: string) {
+    const customer = await this.findById(id);
+    
+    return await prisma.customer.update({
+      where: { id },
+      data: { isActive: !customer.isActive }
+    });
+  }
+
+  async toggleBlock(id: string) {
+    const customer = await this.findById(id);
+    
+    return await prisma.customer.update({
+      where: { id },
+      data: { isBlocked: !customer.isBlocked }
+    });
+  }
+
+  async changeTier(id: string, tier: CustomerTier) {
+    await this.findById(id);
+    
+    return await prisma.customer.update({
+      where: { id },
+      data: { tier }
+    });
+  }
+
+  // ========== ADDRESSES ==========
+
+  async getAddresses(customerId: string) {
+    await this.findById(customerId);
+
+    return await prisma.address.findMany({
+      where: { customerId },
+      orderBy: [
+        { isDefault: 'desc' },
+        { street: 'asc' }
+      ]
+    });
+  }
+
+  async createAddress(data: any) {
+    await this.findById(data.customerId);
+
+    // Si es la primera dirección, hacerla default automáticamente
+    const addressCount = await prisma.address.count({
+      where: { customerId: data.customerId }
+    });
+
+    if (addressCount === 0) {
+      data.isDefault = true;
+    }
+
+    // Si se marca como default, quitar default de las demás
+    if (data.isDefault) {
+      await prisma.address.updateMany({
+        where: { customerId: data.customerId },
+        data: { isDefault: false }
+      });
+    }
+
+    return await prisma.address.create({
+      data
+    });
+  }
+
+  async updateAddress(id: string, data: any) {
+    const address = await prisma.address.findUnique({
+      where: { id }
+    });
+
+    if (!address) {
+      throw new AppError(404, 'Dirección no encontrada');
+    }
+
+    // Si se marca como default, quitar default de las demás
+    if (data.isDefault) {
+      await prisma.address.updateMany({
+        where: { customerId: address.customerId },
+        data: { isDefault: false }
+      });
+    }
+
+    return await prisma.address.update({
+      where: { id },
+      data
+    });
+  }
+
+  async deleteAddress(id: string) {
+    const address = await prisma.address.findUnique({
+      where: { id }
+    });
+
+    if (!address) {
+      throw new AppError(404, 'Dirección no encontrada');
+    }
+
+    // No permitir eliminar la única dirección default
+    if (address.isDefault) {
+      const otherAddresses = await prisma.address.count({
+        where: { 
+          customerId: address.customerId,
+          id: { not: id }
+        }
+      });
+
+      if (otherAddresses > 0) {
+        throw new AppError(400, 'No puedes eliminar la dirección principal. Primero marca otra como principal.');
+      }
+    }
+
+    await prisma.address.delete({
+      where: { id }
+    });
+
+    return { message: 'Dirección eliminada' };
+  }
+
+  async setDefaultAddress(id: string) {
+    const address = await prisma.address.findUnique({
+      where: { id }
+    });
+
+    if (!address) {
+      throw new AppError(404, 'Dirección no encontrada');
+    }
+
+    // Quitar default de todas las direcciones del cliente
+    await prisma.address.updateMany({
+      where: { customerId: address.customerId },
+      data: { isDefault: false }
+    });
+
+    // Marcar esta como default
+    return await prisma.address.update({
+      where: { id },
+      data: { isDefault: true }
+    });
+  }
+}
