@@ -9,6 +9,7 @@ import {
 } from './products.dto';
 import { successResponse } from '../../utils/response';
 import { AuthRequest } from '../../types';
+import { AppError } from '../../middleware/error.middleware';
 
 const service = new ProductsService();
 
@@ -35,6 +36,11 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
   try {
     const data = createProductSchema.parse(req.body);
     const userId = req.user?.userId;
+    
+    if (!userId) {
+      throw new AppError(401, 'Usuario no autenticado');
+    }
+    
     const product = await service.create(data, userId);
     res.status(201).json(successResponse(product, 'Producto creado exitosamente'));
   } catch (error) {
@@ -56,6 +62,11 @@ export const updateProductPrices = async (req: AuthRequest, res: Response, next:
   try {
     const data = updatePricesSchema.parse(req.body);
     const userId = req.user?.userId;
+    
+    if (!userId) {
+      throw new AppError(401, 'Usuario no autenticado');
+    }
+    
     const prices = await service.updatePrices(req.params.id, data, userId);
     res.json(successResponse(prices, 'Precios actualizados exitosamente'));
   } catch (error) {

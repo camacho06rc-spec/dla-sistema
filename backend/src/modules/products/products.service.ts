@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/error.middleware';
+import { generateSlug } from '../../utils/slug';
 
 export class ProductsService {
   async findAll(query: any) {
@@ -75,8 +76,8 @@ export class ProductsService {
     return product;
   }
 
-  async create(data: any, userId?: string) {
-    const slug = this.generateSlug(data.name);
+  async create(data: any, userId: string) {
+    const slug = generateSlug(data.name);
     
     // Check if slug or SKU already exists
     const existingSlug = await prisma.product.findUnique({ where: { slug } });
@@ -136,7 +137,7 @@ export class ProductsService {
     await this.findById(id);
     
     if (data.name) {
-      const slug = this.generateSlug(data.name);
+      const slug = generateSlug(data.name);
       const existing = await prisma.product.findFirst({
         where: { slug, id: { not: id } }
       });
@@ -175,7 +176,7 @@ export class ProductsService {
     return product;
   }
 
-  async updatePrices(id: string, pricesData: any, userId?: string) {
+  async updatePrices(id: string, pricesData: any, userId: string) {
     const product = await this.findById(id);
 
     // Close current price history
@@ -296,14 +297,5 @@ export class ProductsService {
     await prisma.productImage.delete({ where: { id: imageId } });
 
     return { message: 'Imagen eliminada' };
-  }
-
-  private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
   }
 }

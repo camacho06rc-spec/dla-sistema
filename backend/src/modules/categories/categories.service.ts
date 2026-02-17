@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/error.middleware';
+import { generateSlug } from '../../utils/slug';
 
 export class CategoriesService {
   async findAll(query: any) {
@@ -44,7 +45,7 @@ export class CategoriesService {
   }
 
   async create(data: any) {
-    const slug = this.generateSlug(data.name);
+    const slug = generateSlug(data.name);
     
     const existing = await prisma.category.findUnique({ where: { slug } });
     if (existing) {
@@ -60,7 +61,7 @@ export class CategoriesService {
     await this.findById(id);
     
     if (data.name) {
-      const slug = this.generateSlug(data.name);
+      const slug = generateSlug(data.name);
       const existing = await prisma.category.findFirst({
         where: { slug, id: { not: id } }
       });
@@ -101,14 +102,5 @@ export class CategoriesService {
     });
 
     return { message: 'Categoría eliminada' };
-  }
-
-  private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
   }
 }
