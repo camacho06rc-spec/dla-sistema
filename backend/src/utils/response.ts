@@ -7,7 +7,7 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-export function successResponse<T>(res: Response, data: T, message?: string, statusCode = 200) {
+export function successResponse<T>(res: Response, data: T, message?: string, statusCode = 200): void {
   const response: ApiResponse<T> = {
     success: true,
     data,
@@ -17,14 +17,14 @@ export function successResponse<T>(res: Response, data: T, message?: string, sta
     response.message = message;
   }
 
-  return res.status(statusCode).json(response);
+  res.status(statusCode).json(response);
 }
 
-export function errorResponse(res: Response, error: string, statusCode = 400) {
+export function errorResponse(res: Response, error: string, statusCode = 400): void {
   const response: ApiResponse = {
     success: false,
     error,
   };
 
-  return res.status(statusCode).json(response);
+  res.status(statusCode).json(response);
 }

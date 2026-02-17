@@ -36,7 +36,6 @@ model User {
   deliveries             Delivery[]
   paymentVerifications   Payment[]
   productPriceChanges    ProductPriceHistory[]
-  creditMovements        CreditMovement[]
 
   @@index([email])
   @@index([phone])

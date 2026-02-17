@@ -5,15 +5,16 @@ import { AuthRequest } from '../../types';
 
 const usersService = new UsersService();
 
-export async function getProfile(req: AuthRequest, res: Response) {
+export async function getProfile(req: AuthRequest, res: Response): Promise<void> {
   try {
     if (!req.user) {
-      return errorResponse(res, 'Unauthorized', 401);
+      errorResponse(res, 'Unauthorized', 401);
+      return;
     }
 
     const user = await usersService.getProfile(req.user.userId);
-    return successResponse(res, user);
+    successResponse(res, user);
   } catch (error: any) {
-    return errorResponse(res, error.message, 404);
+    errorResponse(res, error.message, 404);
   }
 }

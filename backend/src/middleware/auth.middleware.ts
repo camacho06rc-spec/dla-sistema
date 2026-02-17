@@ -3,12 +3,13 @@ import { verifyToken } from '../utils/jwt';
 import { errorResponse } from '../utils/response';
 import { AuthRequest } from '../types';
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return errorResponse(res, 'No token provided', 401);
+      errorResponse(res, 'No token provided', 401);
+      return;
     }
 
     const token = authHeader.substring(7);
@@ -17,6 +18,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     (req as AuthRequest).user = payload;
     next();
   } catch (error) {
-    return errorResponse(res, 'Invalid or expired token', 401);
+    errorResponse(res, 'Invalid or expired token', 401);
   }
 }
