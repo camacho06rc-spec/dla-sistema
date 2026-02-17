@@ -1,5 +1,6 @@
 import prisma from '../../utils/prisma';
 import { AppError } from '../../utils/AppError';
+import { Prisma } from '@prisma/client';
 import {
   CreateProductDTO,
   UpdateProductDTO,
@@ -84,7 +85,7 @@ export class ProductsService {
       );
     }
 
-    const updateData: any = { ...data };
+    const updateData: Partial<UpdateProductDTO> & { slug?: string } = { ...data };
 
     // Si cambia el nombre, regenerar slug
     if (data.name && data.name !== product.name) {
@@ -189,7 +190,7 @@ export class ProductsService {
       query;
     const skip = (page - 1) * limit;
 
-    const where: any = {
+    const where: Prisma.ProductWhereInput = {
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' as const } },
@@ -400,8 +401,8 @@ export class ProductsService {
     userId: string,
     action: 'CREATE' | 'UPDATE' | 'DELETE' | 'UPDATE_PRICES' | 'ADD_IMAGE' | 'DELETE_IMAGE',
     entityId: string,
-    oldValues: any,
-    newValues: any
+    oldValues: unknown,
+    newValues: unknown
   ) {
     await prisma.auditLog.create({
       data: {

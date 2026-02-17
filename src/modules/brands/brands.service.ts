@@ -1,5 +1,6 @@
 import prisma from '../../utils/prisma';
 import { AppError } from '../../utils/AppError';
+import { Prisma } from '@prisma/client';
 import {
   CreateBrandDTO,
   UpdateBrandDTO,
@@ -12,7 +13,7 @@ export class BrandsService {
     const { page, limit, search, isActive } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {
+    const where: Prisma.BrandWhereInput = {
       ...(search && {
         name: { contains: search, mode: 'insensitive' as const },
       }),
@@ -80,7 +81,7 @@ export class BrandsService {
   async update(id: string, data: UpdateBrandDTO, userId: string) {
     const brand = await this.findById(id);
 
-    const updateData: any = { ...data };
+    const updateData: Partial<UpdateBrandDTO> & { slug?: string } = { ...data };
 
     // Si cambia el nombre, regenerar slug
     if (data.name && data.name !== brand.name) {
@@ -159,8 +160,8 @@ export class BrandsService {
     userId: string,
     action: 'CREATE' | 'UPDATE' | 'DELETE',
     entityId: string,
-    oldValues: any,
-    newValues: any
+    oldValues: unknown,
+    newValues: unknown
   ) {
     await prisma.auditLog.create({
       data: {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppError } from '../../utils/AppError';
 
 export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
@@ -28,11 +29,11 @@ export const createProductSchema = z.object({
 });
 
 // Validation for returnable products
-export const validateCreateProduct = (data: any) => {
+export const validateCreateProduct = (data: unknown) => {
   const parsed = createProductSchema.parse(data);
   if (parsed.isReturnable) {
     if (!parsed.containersPerBox || !parsed.depositPerContainer) {
-      throw new Error('Los productos retornables deben tener envases por caja y depósito');
+      throw new AppError(400, 'Los productos retornables deben tener envases por caja y depósito');
     }
   }
   return parsed;
