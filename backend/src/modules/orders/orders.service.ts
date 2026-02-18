@@ -181,6 +181,7 @@ export class OrdersService {
       }
 
       // Obtener precio según tier del cliente
+      // Note: productPrices is a one-to-one relation (ProductPrice?), not an array
       const priceRecord = product.productPrices;
       if (!priceRecord) {
         throw new AppError(400, `No hay precio configurado para ${product.name}`);
