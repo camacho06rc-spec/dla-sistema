@@ -107,7 +107,7 @@ export class OrdersService {
   }
 
   async create(data: any, userId: string) {
-    const { customerId, branchId, deliveryAddressId, paymentMethod, items, notes, deliveryDate } = data;
+    const { customerId, branchId, deliveryAddressId, items, notes, deliveryDate } = data;
 
     // 1. Verificar cliente
     const customer = await prisma.customer.findUnique({
@@ -214,24 +214,33 @@ export class OrdersService {
         throw new AppError(400, `No hay inventario de ${product.name} en esta sucursal`);
       }
 
-      // Validar stock suficiente
-      if (inventory.stockBoxes < item.boxes) {
-        throw new AppError(400, `Stock insuficiente de ${product.name}. Cajas solicitadas: ${item.boxes}, disponibles: ${inventory.stockBoxes}`);
+      // Validar stock suficiente (considerando total de piezas disponibles)
+      const piecesPerBox = product.piecesPerBox || 1;
+      const requestedTotalPieces = (item.boxes * piecesPerBox) + item.pieces;
+      const availableTotalPieces = (inventory.stockBoxes * piecesPerBox) + inventory.stockPieces;
+      
+      if (availableTotalPieces < requestedTotalPieces) {
+        throw new AppError(400, `Stock insuficiente de ${product.name}. Piezas solicitadas: ${requestedTotalPieces}, disponibles: ${availableTotalPieces}`);
       }
-
-      if (inventory.stockPieces < item.pieces) {
-        throw new AppError(400, `Stock insuficiente de ${product.name}. Piezas solicitadas: ${item.pieces}, disponibles: ${inventory.stockPieces}`);
+      
+      // Validar que hay suficientes cajas completas si se solicitan cajas
+      if (item.boxes > 0 && inventory.stockBoxes < item.boxes) {
+        // Verificar si podemos cubrir con piezas sueltas
+        const piecesNeeded = (item.boxes - inventory.stockBoxes) * piecesPerBox;
+        if (inventory.stockPieces < piecesNeeded) {
+          throw new AppError(400, `Stock insuficiente de ${product.name}. Cajas solicitadas: ${item.boxes}, disponibles: ${inventory.stockBoxes}`);
+        }
       }
 
       // Calcular cantidad total en piezas
-      const piecesPerBox = product.piecesPerBox || 1;
-      const totalPieces = (item.boxes * piecesPerBox) + item.pieces;
+      const totalPieces = requestedTotalPieces;
 
       // Calcular depósito de retornables si aplica
       let itemContainersRequired = 0;
       let itemDepositCharged = 0;
       if (product.isReturnable && product.depositPerContainer) {
-        itemContainersRequired = item.boxes + Math.ceil(item.pieces / piecesPerBox);
+        // Calcular containers basado en total de piezas
+        itemContainersRequired = Math.ceil(totalPieces / piecesPerBox);
         itemDepositCharged = itemContainersRequired * Number(product.depositPerContainer);
       }
 
@@ -399,38 +408,39 @@ export class OrdersService {
       productMap.set(key, existing);
     }
 
-    // Process each product
-    for (const [productId, totals] of productMap.entries()) {
-      const inventory = await prisma.inventory.findUnique({
-        where: {
-          productId_branchId: {
-            productId,
-            branchId: order.branchId
+    // Process all products in a single transaction
+    await prisma.$transaction(async (tx) => {
+      for (const [productId, totals] of productMap.entries()) {
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            productId_branchId: {
+              productId,
+              branchId: order.branchId
+            }
           }
+        });
+
+        if (!inventory) {
+          const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
+          throw new AppError(500, `Error: No se encontró inventario para ${product?.name || productId}`);
         }
-      });
 
-      if (!inventory) {
-        const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
-        throw new AppError(500, `Error: No se encontró inventario para ${product?.name || productId}`);
-      }
+        // Validar stock nuevamente
+        if (inventory.stockBoxes < totals.boxes || inventory.stockPieces < totals.pieces) {
+          const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
+          throw new AppError(400, `Stock insuficiente de ${product?.name || productId}`);
+        }
 
-      // Validar stock nuevamente
-      if (inventory.stockBoxes < totals.boxes || inventory.stockPieces < totals.pieces) {
-        const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
-        throw new AppError(400, `Stock insuficiente de ${product?.name || productId}`);
-      }
-
-      // Descontar inventario
-      await prisma.$transaction([
-        prisma.inventory.update({
+        // Descontar inventario
+        await tx.inventory.update({
           where: { id: inventory.id },
           data: {
             stockBoxes: inventory.stockBoxes - totals.boxes,
             stockPieces: inventory.stockPieces - totals.pieces
           }
-        }),
-        prisma.inventoryMovement.create({
+        });
+        
+        await tx.inventoryMovement.create({
           data: {
             inventoryId: inventory.id,
             type: InventoryMovementType.SALE,
@@ -440,9 +450,9 @@ export class OrdersService {
             referenceId: order.id,
             userId
           }
-        })
-      ]);
-    }
+        });
+      }
+    });
   }
 
   private async returnInventory(order: any, userId: string) {
@@ -462,31 +472,33 @@ export class OrdersService {
       productMap.set(key, existing);
     }
 
-    // Process each product
-    for (const [productId, totals] of productMap.entries()) {
-      const inventory = await prisma.inventory.findUnique({
-        where: {
-          productId_branchId: {
-            productId,
-            branchId: order.branchId
+    // Process all products in a single transaction
+    await prisma.$transaction(async (tx) => {
+      for (const [productId, totals] of productMap.entries()) {
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            productId_branchId: {
+              productId,
+              branchId: order.branchId
+            }
           }
+        });
+
+        if (!inventory) {
+          const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
+          throw new AppError(500, `Error: No se encontró inventario para ${product?.name || productId} durante la devolución`);
         }
-      });
 
-      if (!inventory) {
-        continue; // Si no hay inventario, continuar
-      }
-
-      // Devolver inventario
-      await prisma.$transaction([
-        prisma.inventory.update({
+        // Devolver inventario
+        await tx.inventory.update({
           where: { id: inventory.id },
           data: {
             stockBoxes: inventory.stockBoxes + totals.boxes,
             stockPieces: inventory.stockPieces + totals.pieces
           }
-        }),
-        prisma.inventoryMovement.create({
+        });
+        
+        await tx.inventoryMovement.create({
           data: {
             inventoryId: inventory.id,
             type: InventoryMovementType.RETURN,
@@ -496,8 +508,8 @@ export class OrdersService {
             referenceId: order.id,
             userId
           }
-        })
-      ]);
-    }
+        });
+      }
+    });
   }
 }
