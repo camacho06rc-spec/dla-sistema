@@ -416,18 +416,47 @@ export class OrdersService {
           throw new AppError(500, `Error: No se encontró inventario para ${product?.name || productId}`);
         }
 
-        // Validar stock nuevamente
-        if (inventory.stockBoxes < totals.boxes || inventory.stockPieces < totals.pieces) {
+        // Validar stock total disponible
+        const piecesPerBox = totals.piecesPerBox;
+        const requestedTotalPieces = (totals.boxes * piecesPerBox) + totals.pieces;
+        const availableTotalPieces = (inventory.stockBoxes * piecesPerBox) + inventory.stockPieces;
+        
+        if (availableTotalPieces < requestedTotalPieces) {
           const product = order.orderItems.find((i: any) => i.productId === productId)?.product;
-          throw new AppError(400, `Stock insuficiente de ${product?.name || productId}`);
+          throw new AppError(400, `Stock insuficiente de ${product?.name || productId}. Piezas requeridas: ${requestedTotalPieces}, disponibles: ${availableTotalPieces}`);
         }
+
+        // Calcular cómo descontar del inventario (preferir descontar cajas primero)
+        let newStockBoxes = inventory.stockBoxes;
+        let newStockPieces = inventory.stockPieces;
+        let remainingPiecesToDeduct = requestedTotalPieces;
+        
+        // Primero descontar cajas completas si es posible
+        const boxesToDeduct = Math.min(Math.floor(remainingPiecesToDeduct / piecesPerBox), newStockBoxes);
+        newStockBoxes -= boxesToDeduct;
+        remainingPiecesToDeduct -= boxesToDeduct * piecesPerBox;
+        
+        // Luego descontar piezas sueltas
+        if (remainingPiecesToDeduct > 0) {
+          if (newStockPieces >= remainingPiecesToDeduct) {
+            // Tenemos suficientes piezas sueltas
+            newStockPieces -= remainingPiecesToDeduct;
+          } else {
+            // Necesitamos romper una caja
+            newStockPieces = newStockPieces + piecesPerBox - remainingPiecesToDeduct;
+            newStockBoxes -= 1;
+          }
+        }
+
+        const boxesDelta = inventory.stockBoxes - newStockBoxes;
+        const piecesDelta = inventory.stockPieces - newStockPieces;
 
         // Descontar inventario
         await tx.inventory.update({
           where: { id: inventory.id },
           data: {
-            stockBoxes: inventory.stockBoxes - totals.boxes,
-            stockPieces: inventory.stockPieces - totals.pieces
+            stockBoxes: newStockBoxes,
+            stockPieces: newStockPieces
           }
         });
         
@@ -435,8 +464,8 @@ export class OrdersService {
           data: {
             inventoryId: inventory.id,
             type: InventoryMovementType.SALE,
-            boxesDelta: -totals.boxes,
-            piecesDelta: -totals.pieces,
+            boxesDelta: -boxesDelta,
+            piecesDelta: -piecesDelta,
             reason: `Venta - Pedido ${order.code}`,
             referenceId: order.id,
             userId
@@ -480,12 +509,20 @@ export class OrdersService {
           throw new AppError(500, `Error: No se encontró inventario para ${product?.name || productId} durante la devolución`);
         }
 
+        // Calcular total de piezas a devolver
+        const piecesPerBox = totals.piecesPerBox;
+        const totalPiecesToReturn = (totals.boxes * piecesPerBox) + totals.pieces;
+        
+        // Devolver como cajas completas y piezas sueltas
+        const boxesToReturn = Math.floor(totalPiecesToReturn / piecesPerBox);
+        const piecesToReturn = totalPiecesToReturn % piecesPerBox;
+
         // Devolver inventario
         await tx.inventory.update({
           where: { id: inventory.id },
           data: {
-            stockBoxes: inventory.stockBoxes + totals.boxes,
-            stockPieces: inventory.stockPieces + totals.pieces
+            stockBoxes: inventory.stockBoxes + boxesToReturn,
+            stockPieces: inventory.stockPieces + piecesToReturn
           }
         });
         
@@ -493,8 +530,8 @@ export class OrdersService {
           data: {
             inventoryId: inventory.id,
             type: InventoryMovementType.RETURN,
-            boxesDelta: totals.boxes,
-            piecesDelta: totals.pieces,
+            boxesDelta: boxesToReturn,
+            piecesDelta: piecesToReturn,
             reason: `Devolución - Pedido ${order.code} cancelado`,
             referenceId: order.id,
             userId

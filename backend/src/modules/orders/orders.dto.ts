@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OrderStatus, PaymentMethod, OrderSource, DeliveryType, OrderUnit } from '@prisma/client';
+import { OrderStatus } from '@prisma/client';
 
 export const createOrderItemSchema = z.object({
   productId: z.string().uuid(),
