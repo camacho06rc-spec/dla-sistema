@@ -222,15 +222,6 @@ export class OrdersService {
       if (availableTotalPieces < requestedTotalPieces) {
         throw new AppError(400, `Stock insuficiente de ${product.name}. Piezas solicitadas: ${requestedTotalPieces}, disponibles: ${availableTotalPieces}`);
       }
-      
-      // Validar que hay suficientes cajas completas si se solicitan cajas
-      if (item.boxes > 0 && inventory.stockBoxes < item.boxes) {
-        // Verificar si podemos cubrir con piezas sueltas
-        const piecesNeeded = (item.boxes - inventory.stockBoxes) * piecesPerBox;
-        if (inventory.stockPieces < piecesNeeded) {
-          throw new AppError(400, `Stock insuficiente de ${product.name}. Cajas solicitadas: ${item.boxes}, disponibles: ${inventory.stockBoxes}`);
-        }
-      }
 
       // Calcular cantidad total en piezas
       const totalPieces = requestedTotalPieces;

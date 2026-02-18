@@ -13,7 +13,6 @@ export const createOrderSchema = z.object({
   customerId: z.string().uuid(),
   branchId: z.string().uuid(),
   deliveryAddressId: z.string().uuid().optional(),
-  paymentMethod: z.nativeEnum(PaymentMethod),
   items: z.array(createOrderItemSchema).min(1, "Debe incluir al menos un producto"),
   notes: z.string().optional(),
   deliveryDate: z.string().datetime().optional()
