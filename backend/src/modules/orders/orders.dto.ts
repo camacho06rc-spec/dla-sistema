@@ -15,7 +15,7 @@ export const createOrderSchema = z.object({
   deliveryAddressId: z.string().uuid().optional(),
   items: z.array(createOrderItemSchema).min(1, "Debe incluir al menos un producto"),
   notes: z.string().optional(),
-  deliveryDate: z.string().datetime().optional()
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido. Use YYYY-MM-DD").optional()
 });
 
 export const updateOrderStatusSchema = z.object({

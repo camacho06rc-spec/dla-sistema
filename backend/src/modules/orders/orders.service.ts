@@ -5,7 +5,9 @@ import { OrderStatus, InventoryMovementType, OrderSource, DeliveryType, OrderUni
 export class OrdersService {
   async findAll(query: any) {
     const { page = 1, limit = 20, customerId, branchId, status, fromDate, toDate } = query;
-    const skip = (page - 1) * limit;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
     
@@ -23,7 +25,7 @@ export class OrdersService {
       prisma.order.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         include: {
           customer: {
             select: {
@@ -64,10 +66,10 @@ export class OrdersService {
     return {
       data: orders,
       pagination: {
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       }
     };
   }
@@ -275,9 +277,10 @@ export class OrdersService {
 
     const totalAmount = subtotal + totalDepositCharged;
 
-    // 5. Generar código de pedido
-    const orderCount = await prisma.order.count();
-    const orderCode = `ORD-${Date.now()}-${orderCount + 1}`;
+    // 5. Generar código de pedido único (usando timestamp y random para evitar duplicados)
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    const orderCode = `ORD-${timestamp}-${random}`;
 
     // 6. Crear pedido con items en transacción
     const order = await prisma.$transaction(async (tx) => {
@@ -313,13 +316,13 @@ export class OrdersService {
         }
       });
 
-      // Registrar en historial de estados
+      // Registrar en historial de estados (inicial)
       await tx.orderStatusHistory.create({
         data: {
           orderId: newOrder.id,
           fromStatus: OrderStatus.CREATED,
           toStatus: OrderStatus.CREATED,
-          notes: 'Pedido creado',
+          notes: 'Estado inicial - Pedido creado',
           changedBy: userId
         }
       });
