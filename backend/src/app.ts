@@ -19,6 +19,7 @@ import reportsRoutes from './modules/reports/reports.routes';
 import deliveriesRoutes from './modules/deliveries/deliveries.routes';
 import creditRoutes from './modules/credit/credit.routes';
 import returnablesRoutes from './modules/returnables/returnables.routes';
+import promotionsRoutes from './modules/promotions/promotions.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -58,6 +59,7 @@ export function createApp(): Application {
   app.use('/api/deliveries', deliveriesRoutes);
   app.use('/api/credit', creditRoutes);
   app.use('/api/returnables', returnablesRoutes);
+  app.use('/api/promotions', promotionsRoutes);
 
   // Error handling
   app.use(errorMiddleware);
