@@ -202,6 +202,7 @@ model Product {
   orderItems          OrderItem[]
   goodsReceiptItems   GoodsReceiptItem[]
   productCostHistory  ProductCostHistory[]
+  suppliers           SupplierProduct[]
 
   @@index([slug])
   @@index([sku])
@@ -778,26 +779,108 @@ model CashRegisterSession {
 }
 
 // ============================================
-// SUPPLIERS AND PURCHASES
+// SUPPLIERS (PROVEEDORES)
 // ============================================
 
 model Supplier {
-  id           String   @id @default(uuid())
-  name         String
-  contactName  String?
-  phone        String?
-  email        String?
-  rfc          String?
-  address      String?
-  paymentTerms String?
-  notes        String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String            @id @default(uuid())
+  code             String            @unique // Auto-generated: PROV-{timestamp}
+  businessName     String            // Razón social
+  tradeName        String?           // Nombre comercial
+  rfc              String?           @unique
 
-  goodsReceipts GoodsReceipt[]
+  // Contact info
+  phone            String
+  email            String?
+  website          String?
 
-  @@index([name])
+  // Address
+  street           String
+  exteriorNumber   String
+  interiorNumber   String?
+  neighborhood     String
+  city             String
+  state            String
+  postalCode       String
+  country          String            @default("México")
+
+  // Payment terms
+  creditDays       Int               @default(0)
+  creditLimit      Decimal           @default(0) @db.Decimal(10, 2)
+
+  // Status
+  isActive         Boolean           @default(true)
+  isBlocked        Boolean           @default(false)
+  blockedReason    String?
+  blockedAt        DateTime?
+
+  // Relations
+  contacts         SupplierContact[]
+  products         SupplierProduct[]
+  goodsReceipts    GoodsReceipt[]
+
+  // Timestamps
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([businessName])
+  @@index([rfc])
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+model SupplierContact {
+  id               String    @id @default(uuid())
+  supplierId       String
+
+  firstName        String
+  lastName         String
+  position         String?
+  phone            String
+  email            String?
+  isMain           Boolean   @default(false)
+
+  // Relations
+  supplier         Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([supplierId])
+  @@map("supplier_contacts")
+}
+
+model SupplierProduct {
+  id               String    @id @default(uuid())
+  supplierId       String
+  productId        String
+
+  // Purchase info
+  purchasePrice    Decimal   @db.Decimal(10, 2)
+  leadTimeDays     Int       @default(0)
+  minimumOrder     Int       @default(1)
+
+  // SKU del proveedor
+  supplierSku      String?
+
+  // Status
+  isPreferred      Boolean   @default(false)
+  isActive         Boolean   @default(true)
+
+  // Relations
+  supplier         Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([supplierId, productId])
+  @@index([supplierId])
+  @@index([productId])
+  @@index([isPreferred])
+  @@map("supplier_products")
 }
 
 model GoodsReceipt {

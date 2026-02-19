@@ -13,6 +13,7 @@ import productRoutes from './modules/products/products.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import customersRoutes from './modules/customers/customers.routes';
 import ordersRoutes from './modules/orders/orders.routes';
+import suppliersRoutes from './modules/suppliers/suppliers.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -46,6 +47,7 @@ export function createApp(): Application {
   app.use('/api/inventory', inventoryRoutes);
   app.use('/api/customers', customersRoutes);
   app.use('/api/orders', ordersRoutes);
+  app.use('/api/suppliers', suppliersRoutes);
 
   // Error handling
   app.use(errorMiddleware);
