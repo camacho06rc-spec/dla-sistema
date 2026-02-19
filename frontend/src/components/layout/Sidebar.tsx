@@ -12,7 +12,10 @@ import {
   BarChart3,
   Gift,
   Star,
-  Settings
+  Settings,
+  DollarSign,
+  Receipt,
+  Warehouse,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,11 +24,14 @@ const menuItems = [
   { href: '/products', label: 'Productos', icon: Package },
   { href: '/orders', label: 'Pedidos', icon: ShoppingCart },
   { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/inventory', label: 'Inventario', icon: Warehouse },
   { href: '/deliveries', label: 'Entregas', icon: Truck },
-  { href: '/payments', label: 'Cobranza', icon: CreditCard },
+  { href: '/collections', label: 'Cobranza', icon: CreditCard },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
   { href: '/promotions', label: 'Promociones', icon: Gift },
   { href: '/loyalty', label: 'Lealtad', icon: Star },
+  { href: '/cash-register', label: 'Caja', icon: DollarSign },
+  { href: '/expenses', label: 'Gastos', icon: Receipt },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 
@@ -33,14 +39,14 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-white">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-white overflow-y-auto">
       <div className="flex h-16 items-center border-b px-6">
         <h1 className="text-xl font-bold text-primary">Sistema DLA</h1>
       </div>
       <nav className="space-y-1 p-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 
           return (
             <Link
