@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient();
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
