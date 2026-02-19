@@ -92,3 +92,32 @@ export const getLowStockAlert = async (req: Request, res: Response, next: NextFu
     next(error);
   }
 };
+
+export const getSalesByPeriod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { days, startDate, endDate } = req.query as Record<string, string | undefined>;
+    const data = await service.getSalesByPeriod({ days, startDate, endDate });
+    res.json(successResponse(data));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSalesByCategory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query as Record<string, string | undefined>;
+    const data = await service.getSalesByCategory({ startDate, endDate });
+    res.json(successResponse(data));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCustomersByTier = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await service.getCustomersByTier();
+    res.json(successResponse(data));
+  } catch (error) {
+    next(error);
+  }
+};
