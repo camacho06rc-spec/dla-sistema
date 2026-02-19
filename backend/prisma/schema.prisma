@@ -575,6 +575,7 @@ enum CreditMovementType {
   CHARGE
   PAYMENT
   RELEASE
+  ADJUSTMENT
 }
 
 enum CreditTerm {
@@ -590,7 +591,10 @@ model CreditMovement {
   term             CreditTerm?
   dueDate          DateTime?
   orderId          String?
+  paymentMethod    String?
+  reference        String?
   notes            String?
+  createdBy        String
   createdAt        DateTime           @default(now())
 
   creditAccount CreditAccount @relation(fields: [creditAccountId], references: [id], onDelete: Cascade)
