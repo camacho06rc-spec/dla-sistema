@@ -632,6 +632,119 @@ export class ReportsService {
   }
 
   // ==========================================
+  // SALES BY PERIOD
+  // ==========================================
+
+  async getSalesByPeriod(query: { days?: string; startDate?: string; endDate?: string }) {
+    const daysNum = query.days ? parseInt(query.days, 10) : 30;
+    const validDays = Number.isFinite(daysNum) && daysNum > 0 ? daysNum : 30;
+    let start: Date;
+    let end: Date;
+
+    if (query.startDate && query.endDate) {
+      start = new Date(query.startDate);
+      end = new Date(query.endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        start = new Date();
+        start.setDate(start.getDate() - 29);
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+      }
+    } else {
+      end = new Date();
+      end.setHours(23, 59, 59, 999);
+      start = new Date();
+      start.setDate(start.getDate() - validDays + 1);
+      start.setHours(0, 0, 0, 0);
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        orderDate: { gte: start, lte: end },
+        status: {
+          in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.IN_ROUTE, OrderStatus.DELIVERED],
+        },
+      },
+      select: { orderDate: true, total: true },
+    });
+
+    const byDate: { [date: string]: number } = {};
+    for (const order of orders) {
+      const date = order.orderDate.toISOString().split('T')[0];
+      byDate[date] = (byDate[date] || 0) + Number(order.total);
+    }
+
+    const data = Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({ date, total: Math.round(total * 100) / 100 }));
+
+    return data;
+  }
+
+  // ==========================================
+  // SALES BY CATEGORY
+  // ==========================================
+
+  async getSalesByCategory(query: { startDate?: string; endDate?: string }) {
+    const now = new Date();
+    const parsedStart = query.startDate ? new Date(query.startDate) : null;
+    const parsedEnd = query.endDate ? new Date(query.endDate) : null;
+    const start = parsedStart && !isNaN(parsedStart.getTime())
+      ? parsedStart
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = parsedEnd && !isNaN(parsedEnd.getTime()) ? parsedEnd : now;
+
+    const orderItems = await prisma.orderItem.findMany({
+      where: {
+        order: {
+          orderDate: { gte: start, lte: end },
+          status: {
+            in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.IN_ROUTE, OrderStatus.DELIVERED],
+          },
+        },
+      },
+      include: {
+        product: {
+          select: { category: { select: { name: true } } },
+        },
+      },
+    });
+
+    const byCategory: { [category: string]: number } = {};
+    for (const item of orderItems) {
+      const category = item.product.category.name;
+      byCategory[category] = (byCategory[category] || 0) + Number(item.total);
+    }
+
+    const grandTotal = Object.values(byCategory).reduce((sum, v) => sum + v, 0);
+
+    const data = Object.entries(byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .map(([category, total]) => ({
+        category,
+        total: Math.round(total * 100) / 100,
+        percentage: grandTotal > 0 ? Math.round((total / grandTotal) * 10000) / 100 : 0,
+      }));
+
+    return data;
+  }
+
+  // ==========================================
+  // CUSTOMERS BY TIER
+  // ==========================================
+
+  async getCustomersByTier() {
+    const customers = await prisma.customer.groupBy({
+      by: ['tier'],
+      where: { isActive: true },
+      _count: { tier: true },
+    });
+
+    return customers.map(c => ({ tier: c.tier, count: c._count.tier }));
+  }
+
+  // ==========================================
   // LOW STOCK ALERT
   // ==========================================
 

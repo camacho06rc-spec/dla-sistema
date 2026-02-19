@@ -58,6 +58,9 @@ export function createApp(): Application {
   app.use('/api/categories', categoryRoutes);
   app.use('/api/brands', brandRoutes);
   app.use('/api/products', productRoutes);
+  app.use('/api/catalog/products', productRoutes);
+  app.use('/api/catalog/categories', categoryRoutes);
+  app.use('/api/catalog/brands', brandRoutes);
   app.use('/api/inventory', inventoryRoutes);
   app.use('/api/customers', customersRoutes);
   app.use('/api/orders', ordersRoutes);

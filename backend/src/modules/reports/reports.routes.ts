@@ -12,6 +12,9 @@ router.use(authenticate);
 // ==========================================
 
 router.get('/sales', controller.getSalesReport);
+router.get('/sales-by-period', controller.getSalesByPeriod);
+router.get('/sales-by-category', controller.getSalesByCategory);
+router.get('/customers-by-tier', controller.getCustomersByTier);
 router.get('/top-products', controller.getTopProducts);
 router.get('/top-customers', controller.getTopCustomers);
 router.get('/inventory-status', controller.getInventoryStatus);
