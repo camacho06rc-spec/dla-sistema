@@ -20,6 +20,7 @@ import deliveriesRoutes from './modules/deliveries/deliveries.routes';
 import creditRoutes from './modules/credit/credit.routes';
 import returnablesRoutes from './modules/returnables/returnables.routes';
 import promotionsRoutes from './modules/promotions/promotions.routes';
+import loyaltyRoutes from './modules/loyalty/loyalty.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -60,6 +61,7 @@ export function createApp(): Application {
   app.use('/api/credit', creditRoutes);
   app.use('/api/returnables', returnablesRoutes);
   app.use('/api/promotions', promotionsRoutes);
+  app.use('/api/loyalty', loyaltyRoutes);
 
   // Error handling
   app.use(errorMiddleware);
