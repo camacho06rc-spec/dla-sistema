@@ -22,7 +22,10 @@ const schema = z.object({
   category: z.string().min(1, 'Categoría requerida'),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   description: z.string().min(3, 'Descripción mínimo 3 caracteres'),
-  receiptUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+  receiptUrl: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.string().url('URL inválida').optional()
+  ),
   expenseDate: z.string().min(1, 'Fecha requerida'),
   notes: z.string().optional(),
 });
@@ -42,8 +45,7 @@ export default function NewExpensePage() {
   });
 
   const onSubmit = (data: FormData) => {
-    const payload = { ...data, receiptUrl: data.receiptUrl || undefined };
-    mutation.mutate(payload);
+    mutation.mutate(data);
   };
 
   return (
